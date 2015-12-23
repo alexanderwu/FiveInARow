@@ -13,16 +13,21 @@ import java.awt.event.MouseListener;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-public class Game extends JFrame implements ActionListener, MouseListener{
+public class Game implements ActionListener, MouseListener{
 	
-	private static final long serialVersionUID = 1L; // gets rid of eclipse warning
+	private JFrame frame;
 	private JPanel panel;
 	final int MARGIN = 30;
 	private int cellSize;
-	private int frameSize = 600;
+	private int frameWidth = 560;
+	private int frameHeight = 600;
+	private Color boardColor = Color.decode("#F0D250");
 	private Board board;
 	private Player player1; // Default color: black
 	private Player player2;// Default color: white
@@ -45,33 +50,57 @@ public class Game extends JFrame implements ActionListener, MouseListener{
 		this(gridSize, new HumanPlayer(), new Sammy());
 	}
 	public Game(int gridSize, Player p1, Player p2) {
-		super("Five in a Row");
 		board = new Board(gridSize);
 		cellSize = 500/board.getN();
 		player1 = p1;
 		player2 = p2;	
 		player1.board = board;
 		player2.board = board;
+		initGUI();
 		
-		this.setSize(frameSize, frameSize);
-		this.setLayout(null);
-		initBoard(board.getN());
-		this.add(panel);
-		this.setVisible(true);
-		panel.addMouseListener(this);
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-//		if(p1 instanceof Sammy) {
-//			clickNextPebble(b.getN()/2+1,b.getN()/2+1,player1);
-//			player1Turn = false;
-//		}
 	}
 	
+	private void initGUI() {
+		frame = new JFrame("Five in a Row");
+		frame.setSize(frameWidth, frameHeight);
+		frame.setLayout(null);
+		initBoard(board.getN());
+		frame.add(panel);
+		frame.setVisible(true);
+		panel.addMouseListener(this);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setResizable(false);
+		
+		JMenuBar menuBar = new JMenuBar();
+		JMenu gameMenu = new JMenu("Game",true);
+		
+		JMenuItem newGame = new JMenuItem("New Game", 'n');
+        JMenuItem changeBoardSize = new JMenuItem("Board Size", 't');
+        
+        gameMenu.add(newGame); 
+        gameMenu.add(changeBoardSize);
+        
+        menuBar.add(gameMenu); 
+        
+        //Create a main Panel to include Player options
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(null);
+	
+        // Add everything to Window
+        frame.setJMenuBar(menuBar);
+        frame.getContentPane().add(mainPanel);
+		frame.setVisible(true);
+		
+		newGame.addActionListener(this);
+		changeBoardSize.addActionListener(this);
+		//gamePanel.addMouseListener(this);
+        
+	}
 	@SuppressWarnings("serial")
 	private void initBoard(final int n) {
 		panel = new JPanel(){
 			public void paintComponent(Graphics g){
-				g.setColor(Color.decode("#F0D250"));
+				g.setColor(boardColor);
 				g.fillRect(0, 0, n*cellSize, n*cellSize);
 				g.setColor(Color.BLACK);
 				for(int i=0; i<=n; i++){
@@ -81,13 +110,13 @@ public class Game extends JFrame implements ActionListener, MouseListener{
 			}
 		};
 		panel.setLocation(MARGIN, MARGIN);
-		panel.setSize(n*cellSize+1, n*cellSize+1);	
+		panel.setSize(n*cellSize+1, n*cellSize+1);
 		panel.setEnabled(true);
 	}
-	@SuppressWarnings("serial")
 	private void initPebble(int xPos, int yPos, Pebble aPebble) {
 		final Pebble p = aPebble;
 		JLabel oval = new JLabel() {
+			private static final long serialVersionUID = 1L;
 			public void paintComponent(Graphics g){
 				switch(p) {
 				case X:
@@ -96,6 +125,8 @@ public class Game extends JFrame implements ActionListener, MouseListener{
 				case O:
 					g.setColor(Color.WHITE);
 					break;
+				case EMPTY:
+					g.setColor(boardColor);
 				default:
 				}
 				g.fillOval(0, 0, cellSize, cellSize);
@@ -136,21 +167,25 @@ public class Game extends JFrame implements ActionListener, MouseListener{
 			int[] indices1 = p.nextMove();
 			board.setCell(indices1[0], indices1[1], p.color);
 			this.initPebble(indices1[0]-1, board.getN()-indices1[1], p.color);
-			this.repaint();
+			frame.repaint();
 		}
 		else if(p instanceof HumanPlayer) {
 			this.initPebble(xPos-1, board.getN()-yPos, p.color);
 			board.setCell(xPos, yPos, p.color);
-			this.repaint();
+			frame.repaint();
 		}
 		// else an error has occured
 	}
 	@Override
  	public void mouseReleased(MouseEvent e) {
 		if(player1.wins || player2.wins) {			
-			this.setVisible(false);
-			this.dispose();
-			new Game(board.getN(), player1, player2);
+			// window.setVisible(false);
+			// window.dispose();
+			//new Game(board.getN(), player1, player2);
+			board.clearBoard();
+			panel.removeAll();  
+			panel.repaint();	
+			board.firstMove = true;
 			player1.wins = player2.wins = false;
 			return;	
 		}
@@ -191,23 +226,6 @@ public class Game extends JFrame implements ActionListener, MouseListener{
 	@Override
 	public void mouseExited(MouseEvent e) { }
 
-//	private class GamePanel extends JPanel{
-//		private static final long serialVersionUID = 1L;
-//		
-//		public void paintComponent(Graphics g) {
-//            g.setColor(Color.WHITE);
-//            g.fillRect(0, 0, this.getWidth()-2, this.getHeight()-2);
-//
-//            g.setColor(Color.BLACK);
-//            int cellSize = 500/board.getN();
-//            for (int x = 0; x < this.getWidth(); x += cellSize)
-//                g.drawLine(x, 0, x, this.getHeight());
-//
-//            for (int y = 0; y < this.getHeight(); y += cellSize)
-//                g.drawLine(0, y, this.getWidth(), y);
-//        }
-//	}
-	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String str = e.getActionCommand();
