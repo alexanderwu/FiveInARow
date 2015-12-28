@@ -15,7 +15,6 @@ public class Board {
 
 	private Pebble[][] board;
 	static Random randomNum = new Random();
-	boolean firstMove = true;
 	ArrayList<Integer[]> PrevMoves;
 	
 	public Board() {
@@ -236,129 +235,88 @@ public class Board {
 	}
 
 	public int[] clever(Pebble color) {
-		if(firstMove) {
-			firstMove = false;
-			if(getCell(n/2+1,n/2+1) == Pebble.EMPTY) {
-				int[] indices = {n/2+1,n/2+1};
-				return indices;
-			} else {
-				return randomAdjacent();
-			}
-		}
 		Pebble otherColor = (color == Pebble.X) ? Pebble.O : Pebble.X;
 
-		int defendingMove[] = {-1,-1};
+		int[] bestMove =  {n/2+1,n/2+1};
+		if(!isEmpty(n/2+1,n/2+1)) {
+			int[] indices = randomAdjacent();
+			bestMove[0] = indices[0];
+			bestMove[1] = indices[1];
+		}
+		int bestWeight = 1;
 		for(int i=1; i<=n; i++) {
 			for(int j=1; j<=n; j++) {
 				if(getCell(i,j) != Pebble.EMPTY)
 					continue;
-				// This move wins you the game or prevents defeat;
-				// it checks for five-in-a-row's
-				if(pebblesInARow(5,color,i,j)) {
-					int[] winningMove = {i,j};
-					return winningMove;
-				}
-				if(pebblesInARow(5,otherColor,i,j)) {
-					defendingMove[0] = i;
-					defendingMove[1] = j;
-				}
-			}
-		}
-		if(defendingMove[0] != -1)
-			return defendingMove;
-		
-		for(int i=1; i<=n; i++) {
-			for(int j=1; j<=n; j++) {
-				if(getCell(i,j) != Pebble.EMPTY)
-					continue;
-				// this move decides whether you win the game or avoiding losing
-				// checks for unblocked four-in-a-row's, or intersections of 3-in-a-row
-				if(decisiveMove(i,j,color)) {
-					int[] winningMove = {i,j};
-					return winningMove;
-				}
-				if(decisiveMove(i,j,otherColor)) {
-					defendingMove[0] = i;
-					defendingMove[1] = j;
+				int weight = weightOfMove(i,j,otherColor)*9/10;
+				weight += weightOfMove(i,j,color);
+				
+				if(weight > bestWeight) {
+					bestWeight = weight;
+					bestMove[0] = i;
+					bestMove[1] = j;
+				} else if(weight == bestWeight) {
+					if(randomNum.nextBoolean()) {
+						bestMove[0] = i;
+						bestMove[1] = j;
+					}
+				} else {
+					//return randomAdjacent();
 				}
 			}
 		}
-		if(defendingMove[0] != -1)
-			return defendingMove;
+		System.out.printf("%d,%d %d\n",bestMove[0],bestMove[1],bestWeight);
+		return bestMove;
 		
-//		for(int i=1; i<=n; i++) {
-//			for(int j=1; j<=n; j++) {
-//				if(getCell(i,j) != Pebble.EMPTY)
-//					continue;
-//				// this move decides whether you win the game or avoiding losing
-//				// checks for unblocked four-in-a-row's, or intersections of 3-in-a-row	
-//				if(unblockedPebblesInARow(3,color,i,j)) {
-//					int[] winningMove = {i,j};
-//					return winningMove;
-//				}
-//				if(unblockedPebblesInARow(3,otherColor,i,j)) {
-//					defendingMove[0] = i;
-//					defendingMove[1] = j;
-//				}
-//			}
-//		}
-//		if(defendingMove[0] != -1)
-//			return defendingMove;
-		
-		return bottomLeft();
-		//return randomAdjacent();
 	}
-	static private int forcedMoves(boolean p[], int first, int last) {
-		// used in decisiveMove to determine if we have a forced move
-		
-		// no forced move possible if length < 5
+	private int inARow(boolean arr[], int first, int last, int same, int range) {
+		return inARow(arr,first,last,same,range,false);
+	}
+	private int inARow(boolean arr[], int first, int last, int same, int range, boolean blocked) {
+		int weightOfMove = 0;
+		int sameColor = 0;
+				
+		for(int i=first; i<first+range; i++)
+			if(arr[i])
+				sameColor++;
+		if(sameColor >= same && blocked)
+			weightOfMove++;
+		if(last+1-first == range)
+			return weightOfMove;
+		for(int i=first; i<last-range; i++) {
+			if(arr[i])
+				sameColor--;
+			if(arr[i+range])
+				sameColor++;
+			if(sameColor >= same)
+				weightOfMove++;
+		}
+		if(blocked) {
+			if(arr[last-range])
+				sameColor--;
+			if(arr[last])
+				sameColor++;
+			if(sameColor >= same)
+				weightOfMove++;
+		}		
+		return weightOfMove;
+	}
+
+	private int weightedRow(boolean arr[], int first, int last) {
 		if(last - first < 4) // length = last + 1 - first
 			return 0;
+		int weight = 0;
 		
-		int forcedMoves = 0;
-		int sameColor = 0;
-		for(int i=first; i<first+5; i++)
-			if(p[i])
-				sameColor++;
-		if(sameColor >= 4)
-			forcedMoves++;
-		for(int i=first; i<last-4; i++) {
-			if(p[i])
-				sameColor--;
-			if(p[i+5])
-				sameColor++;
-			if(sameColor >= 4)
-				forcedMoves++;
-		}
+		weight += 1000*inARow(arr, first, last, 5, 5,true);
+		weight += 100*inARow(arr, first, last, 4, 5);
+		weight += 10*inARow(arr, first, last, 4, 4,true);
+		weight += 10*inARow(arr, first, last, 3, 4);
+		weight += 2*inARow(arr, first, last, 2, 3);
+		weight += inARow(arr, first, last, 2, 4);		
 		
-		if(forcedMoves != 0)
-			return forcedMoves;
-		// No threat of potential five-in-a-row's, 
-		// so we check for potential unblocked 4-in-a-row's
-		if(last - first == 4) // blocked 4-in-a-row guaranteed
-			return 0;
-		
-		sameColor = 0;
-		for(int i=first+1; i<first+5; i++)
-			if(p[i])
-				sameColor++;
-		if(sameColor >= 3)
-			return 1;
-		for(int i=first+1; i<last-4; i++) {
-			if(p[i])
-				sameColor--;
-			if(p[i+4])
-				sameColor++;
-			if(sameColor >= 3)
-				return 1;
-		}		
-		return 0;
+		return weight;
 	}
-	private boolean decisiveMove(int x, int y, Pebble p) {
-		// this move decides whether you win the game or avoiding losing
-		// checks for >2 forcedMoves (unblocked 3-in-a-row or 4 in-a-row)
-		// uses: forcedMoves()
-		
+	public int weightOfMove(int x, int y, Pebble p) {
 		boolean[] arr = new boolean[9];
 		arr[4] = true;
 		//	+-+-+-+-+-+-+-+-+-+
@@ -367,7 +325,7 @@ public class Board {
 		//   0 1 2 3[4]5 6 7 8
 		
 		// check horizontal
-		int forcedMoves = 0;
+		int weight = 0;
 		
 		int first = 4, last = 4;
 		int i = 0;
@@ -376,7 +334,7 @@ public class Board {
 		i = 0;
 		while( (++i <= 4) && (getCell(x+i,y)==Pebble.EMPTY || getCell(x+i,y)==p) )
 			arr[++last] = (getCell(x+i,y)==p);
-		forcedMoves += forcedMoves(arr,first,last);
+		weight += weightedRow(arr,first,last);
 		
 		// check vertical
 		first = last = 4;
@@ -386,7 +344,7 @@ public class Board {
 		i = 0;
 		while( (++i <= 4) && (getCell(x,y+i)==Pebble.EMPTY || getCell(x,y+i)==p) )
 			arr[++last] = (getCell(x,y+i)==p);
-		forcedMoves += forcedMoves(arr,first,last);
+		weight += weightedRow(arr,first,last);
 		
 		// check '\' diagonal
 		first = last = 4;
@@ -396,7 +354,7 @@ public class Board {
 		i = 0;
 		while( (++i <= 4) && (getCell(x-i,y+i)==Pebble.EMPTY || getCell(x-i,y+i)==p) )
 			arr[++last] = (getCell(x-i,y+i)==p);
-		forcedMoves += forcedMoves(arr,first,last);
+		weight += weightedRow(arr,first,last);
 		
 		// check '/' diagonal
 		first = last = 4;
@@ -406,128 +364,9 @@ public class Board {
 		i = 0;
 		while( (++i <= 4) && (getCell(x+i,y+i)==Pebble.EMPTY || getCell(x+i,y+i)==p) )
 			arr[++last] = (getCell(x+i,y+i)==p);
-		forcedMoves += forcedMoves(arr,first,last);
+		weight += weightedRow(arr,first,last);
 		
-		return (forcedMoves > 1);
+		return weight;
 	}
-	private boolean pebblesInARow(int range, Pebble p, int x, int y) {
-		int sameColor = 1;
-		// check colors to the left and right
-		int i = x;
-		while(getCell(--i,y) == p)
-			sameColor++;		
-		i = x;
-		while(getCell(++i,y) == p)
-			sameColor++;
-		if(sameColor >= range)
-			return true;
-		
-		// now check colors below and above
-		sameColor = 1;
-		int j = y;
-		while(getCell(x,--j) == p)
-			sameColor++;
-		j = y;
-		while(getCell(x,++j) == p)
-			sameColor++;
-		
-		if(sameColor >= range)
-			return true;
-		
-		sameColor = 1;
-		// check '/' diagonal
-		i = x;
-		j = y;
-		while(getCell(--i,--j) == p)
-			sameColor++;		
-		i = x;
-		j = y;
-		while(getCell(++i,++j) == p)
-			sameColor++;
-		if(sameColor >= range)
-			return true;
-		
-		// now check '\' diagonal
-		sameColor = 1;
-		i = x;
-		j = y;
-		while(getCell(++i,--j) == p)
-			sameColor++;
-		i = x;
-		j = y;
-		while(getCell(--i,++j) == p)
-			sameColor++;	
-		
-		return (sameColor >=  range);
-	}
-	@SuppressWarnings("unused")
-	private boolean unblockedPebblesInARow(int range, Pebble p, int x, int y) {
-		boolean blocked = false;
-		int sameColor = 1;
-		// check colors to the left and right
-		int i = x;
-		while(getCell(--i,y) == p)
-			sameColor++;
-		if(getCell(i,y) != Pebble.EMPTY)
-			blocked = true;
-		i = x;
-		while(getCell(++i,y) == p)
-			sameColor++;
-		if(getCell(i,y) != Pebble.EMPTY)
-			blocked = true;
-		if(!blocked && sameColor >= range)
-			return true;		
-		// now check colors below and above
-		blocked = false;
-		sameColor = 1;
-		int j = y;
-		while(getCell(x,--j) == p)
-			sameColor++;
-		if(getCell(x,j) != Pebble.EMPTY)
-			blocked = true;
-		j = y;
-		while(getCell(x,++j) == p)
-			sameColor++;
-		if(getCell(x,j) != Pebble.EMPTY)
-			blocked = true;
-		if(!blocked && sameColor >= range)
-			return true;
-		
-		blocked = false;
-		sameColor = 1;
-		// check '\' diagonal
-		i = x;
-		j = y;
-		while(getCell(--i,--j) == p)
-			sameColor++;
-		if(getCell(i,j) != Pebble.EMPTY)
-			blocked = true;
-		i = x;
-		j = y;
-		while(getCell(++i,++j) == p)
-			sameColor++;
-		if(getCell(i,j) != Pebble.EMPTY)
-			blocked = true;
-		if(!blocked && sameColor >= range)
-			return true;		
-		// now check '/' diagonal
-		blocked = false;
-		sameColor = 1;
-		i = x;
-		j = y;
-		while(getCell(++i,--j) == p)
-			sameColor++;
-		if(getCell(i,j) != Pebble.EMPTY)
-			blocked = true;
-		i = x;
-		j = y;
-		while(getCell(--i,++j) == p)
-			sameColor++;
-		if(getCell(i,j) != Pebble.EMPTY)
-			blocked = true;
-//		if(!blocked && sameColor >= range)
-//			return true;
-		
-		return false;
-	}
+
 }

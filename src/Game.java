@@ -35,11 +35,11 @@ public class Game implements ActionListener, MouseListener{
 		
 	@SuppressWarnings("unused")
 	public static void main(String[] args) {
-		Player player1 = new HumanPlayer();
+		//Player player1 = new HumanPlayer();
 		//Player player2 = new HumanPlayer(Pebble.O);
-		//Player player1 = new Sammy(Pebble.X);
+		Player player1 = new Sammy(Pebble.X);
 		Player player2 = new Sammy();
-		int gridSize = 12;
+		int gridSize = 3;
 		Game game = new Game(gridSize, player1, player2);
 	}
 	
@@ -157,7 +157,7 @@ public class Game implements ActionListener, MouseListener{
 			JOptionPane.showMessageDialog(null, "White wins!");
 		}
 		else {
-			System.out.println("Game end error");
+			JOptionPane.showMessageDialog(null, "It's a tie!");
 		}
 	}
 	
@@ -178,14 +178,10 @@ public class Game implements ActionListener, MouseListener{
 	}
 	@Override
  	public void mouseReleased(MouseEvent e) {
-		if(player1.wins || player2.wins) {			
-			// window.setVisible(false);
-			// window.dispose();
-			//new Game(board.getN(), player1, player2);
+		if(board.gameEnds()) {			
 			board.clearBoard();
 			panel.removeAll();  
 			panel.repaint();	
-			board.firstMove = true;
 			player1.wins = player2.wins = false;
 			return;	
 		}
@@ -220,7 +216,8 @@ public class Game implements ActionListener, MouseListener{
 	@Override
 	public void mouseClicked(MouseEvent e) { }
 	@Override
-	public void mousePressed(MouseEvent e) { }
+	public void mousePressed(MouseEvent e) { 
+	}
 	@Override
 	public void mouseEntered(MouseEvent e) { }
 	@Override
